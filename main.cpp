@@ -5,11 +5,14 @@
 
 int main()
 {
-    auto window = sf::RenderWindow(sf::VideoMode({1536u, 1024u}), "CMake SFML Project");
+    auto window = sf::RenderWindow(sf::VideoMode({ 1536u, 1024u }), "Flying Robot");
     window.setFramerateLimit(144);
 
     sf::Texture texture_clouds("clouds.png");
     sf::Sprite sprite_clouds(texture_clouds);
+
+    sf::Texture texture_cloudsTwo("cloudsTwo.png");
+    sf::Sprite sprite_cloudsTwo(texture_cloudsTwo);
 
     sf::Texture texture_hills("hills.png");
     sf::Sprite sprite_hills(texture_hills);
@@ -20,11 +23,21 @@ int main()
     sf::Texture texture_teaRows("teaRows.png");
     sf::Sprite sprite_teaRows(texture_teaRows);
 
+
+    sf::Texture texture_robotDefault("robotDefault.png");
+    sf::Sprite sprite_robotDefault(texture_robotDefault);
+
+    sf::Texture texture_robotJump("robotJump.png");
+    sf::Sprite sprite_robotJump(texture_robotJump);
+
     sf::Clock clock;
 
     // find a way to get all offsets done by a function
     float cloudOffSet{ 0.0f };
-    float cloudSpeed(25.0f);
+    float cloudSpeed(1.0f);
+
+    float cloudTwoOffSet{ 0.0f };
+    float cloudTwoSpeed(1.0f);
 
     float hillOffSet{ 0.0f };
     float hillSpeed(10.0f);
@@ -34,6 +47,10 @@ int main()
 
     float groundBarOffSet{ 0.0f };
     float groundBarSpeed(100.0f);
+
+    auto robotPosition{ sf::Vector2f(300.f, 700.f) };
+    auto robotSpeed{ 300.f };
+    auto robotVelocity{ 0.f };
 
     while (window.isOpen())
     {
@@ -53,12 +70,24 @@ int main()
         
         if (cloudOffSet > -3072.0f)
         {
-            cloudOffSet -= 1.0f;
+            cloudOffSet -= 0.50f;
             std::cout << cloudOffSet;
         }
         
         if (cloudOffSet <= -3072.0f)
             cloudOffSet = 0;
+
+        cloudTwoOffSet -= cloudTwoSpeed * deltaTime;
+
+        if (cloudTwoOffSet > -3072.0f)
+        {
+            cloudTwoOffSet -= 0.750f;
+            std::cout << cloudTwoOffSet;
+        }
+
+        if (cloudTwoOffSet <= -3072.0f)
+            cloudTwoOffSet = 0;
+
         //end cloud function
 
         // hill function
@@ -101,18 +130,40 @@ int main()
         if (groundBarOffSet <= -3072.0f)
             groundBarOffSet = 0;
         // end ground function
-            
+        
+        // robot function
+        robotVelocity = robotSpeed * deltaTime;
+        
 
         sprite_clouds.setPosition(sf::Vector2f(cloudOffSet, 0));
+        sprite_cloudsTwo.setPosition(sf::Vector2f(cloudTwoOffSet, 0));
         sprite_hills.setPosition(sf::Vector2f(hillOffSet, 0));
         sprite_teaRows.setPosition(sf::Vector2f(teaRowOffSet, 0));
         sprite_groundBar.setPosition(sf::Vector2f(groundBarOffSet, 0));
+        sprite_robotDefault.setPosition(sf::Vector2f(robotPosition));
+        sprite_robotJump.setPosition(sf::Vector2f(robotPosition));
 
         window.clear();
         window.draw(sprite_clouds);
+        window.draw(sprite_cloudsTwo);
+       
         window.draw(sprite_hills);
         window.draw(sprite_teaRows);
         window.draw(sprite_groundBar);
+        //Jumping check
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::W))
+        {
+            robotPosition.y -= robotVelocity;
+            window.draw(sprite_robotJump);
+        
+        }
+        else
+        {
+            robotPosition.y += (1.25f * robotVelocity);
+            window.draw(sprite_robotDefault);
+        }
+
+
         window.display();
     }
 }
