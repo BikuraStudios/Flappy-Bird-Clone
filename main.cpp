@@ -3,7 +3,17 @@
 #include <SFML/Graphics/Rect.hpp>
 #include <iostream>
 
+float updateParallax(float offset, float speed, float deltaTime, float resetThreshhold) 
+{
+    
 
+    if (offset > -resetThreshhold)
+        offset -= speed * deltaTime;
+    if (offset <= -resetThreshhold)
+        offset = 0.0f;
+
+    return offset;
+}
 
 int main()
 {
@@ -36,21 +46,13 @@ int main()
 
     sf::Clock clock;
 
-    // find a way to get all offsets done by a function
+
     float cloudOffSet{ 0.0f };
-    float cloudSpeed(1.0f);
-
     float cloudTwoOffSet{ 0.0f };
-    float cloudTwoSpeed(1.0f);
-
     float hillOffSet{ 0.0f };
-    float hillSpeed(10.0f);
-
     float teaRowOffSet{ 0.0f };
-    float teaRowSpeed(60.0f);
-
     float groundBarOffSet{ 0.0f };
-    float groundBarSpeed(100.0f);
+
 
     auto robotPosition{ sf::Vector2f(300.f, 700.f) };
     auto robotSpeed{ 300.f };
@@ -58,6 +60,7 @@ int main()
 
     while (window.isOpen())
     {
+
         while (const std::optional event = window.pollEvent())
         {
             if (event->is<sf::Event::Closed>())
@@ -89,80 +92,24 @@ int main()
                 gameView.setViewport(viewport);
             }
         }
-
-        
         float deltaTime = clock.restart().asSeconds();
 
-        
-        // make this a cloud function
-        cloudOffSet -= cloudSpeed * deltaTime;
-        
-        if (cloudOffSet > -3072.0f)
-        {
-            cloudOffSet -= 0.50f;
-            std::cout << cloudOffSet;
-        }
-        
-        if (cloudOffSet <= -3072.0f)
-            cloudOffSet = 0;
+        cloudOffSet = updateParallax(cloudOffSet, 1.0f, deltaTime, 3072.0f);
 
-        cloudTwoOffSet -= cloudTwoSpeed * deltaTime;
+        cloudTwoOffSet = updateParallax(cloudTwoOffSet, 1.0f, deltaTime, 3072.0f);
 
-        if (cloudTwoOffSet > -3072.0f)
-        {
-            cloudTwoOffSet -= 0.750f;
-            std::cout << cloudTwoOffSet;
-        }
+        hillOffSet = updateParallax(hillOffSet, 10.0f, deltaTime, 3072.0f);
 
-        if (cloudTwoOffSet <= -3072.0f)
-            cloudTwoOffSet = 0;
+        teaRowOffSet = updateParallax(teaRowOffSet, 60.0f, deltaTime, 3072.0f);
 
-        //end cloud function
+        groundBarOffSet = updateParallax(groundBarOffSet, 100.0f, deltaTime, 3072.0f);
 
-        // hill function
-        hillOffSet -= hillSpeed * deltaTime;
 
-        if (hillOffSet > -3072.0f)
-        {
-            hillOffSet -= 1.0f;
-            std::cout << hillOffSet;
-        }
 
-        if (hillOffSet <= -3072.0f)
-            hillOffSet = 0;
-        // end hill function
-         
-        
-        // tea function
-        teaRowOffSet -= teaRowSpeed * deltaTime;
 
-        if (teaRowOffSet > -3072.0f)
-        {
-            teaRowOffSet -= 1.0f;
-            std::cout << teaRowOffSet;
-        }
-
-        if (teaRowOffSet <= -3072.0f)
-            teaRowOffSet = 0;
-        //end tea function
-        
-        
-        //ground function
-        groundBarOffSet -= groundBarSpeed * deltaTime;
-
-        if (groundBarOffSet > -3072.0f)
-        {
-            groundBarOffSet -= 1.0f;
-            std::cout << groundBarOffSet;
-        }
-
-        if (groundBarOffSet <= -3072.0f)
-            groundBarOffSet = 0;
-        // end ground function
-        
         // robot function
         robotVelocity = robotSpeed * deltaTime;
-        
+
 
         sprite_clouds.setPosition(sf::Vector2f(cloudOffSet, 0));
         sprite_cloudsTwo.setPosition(sf::Vector2f(cloudTwoOffSet, 0));
@@ -176,7 +123,7 @@ int main()
         window.clear();
         window.draw(sprite_clouds);
         window.draw(sprite_cloudsTwo);
-       
+
         window.draw(sprite_hills);
         window.draw(sprite_teaRows);
         window.draw(sprite_groundBar);
@@ -185,7 +132,7 @@ int main()
         {
             robotPosition.y -= robotVelocity;
             window.draw(sprite_robotJump);
-        
+
         }
         else
         {
@@ -196,4 +143,5 @@ int main()
 
         window.display();
     }
+
 }
