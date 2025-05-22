@@ -1,4 +1,6 @@
 #include <SFML/Graphics.hpp>
+#include <SFML/Graphics/View.hpp>
+#include <SFML/Graphics/Rect.hpp>
 #include <iostream>
 
 
@@ -7,6 +9,8 @@ int main()
 {
     auto window = sf::RenderWindow(sf::VideoMode({ 1536u, 1024u }), "Flying Robot");
     window.setFramerateLimit(144);
+
+    sf::View gameView(sf::FloatRect({ 0.0f, 0.0f }, { 1536.0f, 1024.0f }));
 
     sf::Texture texture_clouds("clouds.png");
     sf::Sprite sprite_clouds(texture_clouds);
@@ -60,7 +64,32 @@ int main()
             {
                 window.close();
             }
+            if (event->is<sf::Event::Resized>())
+            {
+                sf::FloatRect viewport;
+                sf::Vector2u size = window.getSize();
+                auto [windowWidth, windowHeight] = size;
+                float aspectRatio = windowWidth / windowHeight;
+                float targetRatio{ 1536.f / 1024.f };
+
+
+                if (aspectRatio > targetRatio)
+                {
+                    // Window is too wide — horizontal letterboxing
+                    float width = targetRatio / aspectRatio;
+                    viewport = sf::FloatRect({ ((1.f - width) / 2.f), 0.f }, { width, 1.f });
+                }
+                else
+                {
+                    // Window is too tall — vertical letterboxing
+                    float height = aspectRatio / targetRatio;
+                    viewport = sf::FloatRect({ 0.f, ((1.f - height) / 2.f) }, { 1.f, height });
+                }
+
+                gameView.setViewport(viewport);
+            }
         }
+
         
         float deltaTime = clock.restart().asSeconds();
 
@@ -143,6 +172,7 @@ int main()
         sprite_robotDefault.setPosition(sf::Vector2f(robotPosition));
         sprite_robotJump.setPosition(sf::Vector2f(robotPosition));
 
+        window.setView(gameView);
         window.clear();
         window.draw(sprite_clouds);
         window.draw(sprite_cloudsTwo);
