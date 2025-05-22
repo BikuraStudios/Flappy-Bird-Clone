@@ -1,19 +1,34 @@
 #include <SFML/Graphics.hpp>
 #include <SFML/Graphics/View.hpp>
 #include <SFML/Graphics/Rect.hpp>
+#include <SFML/Audio.hpp>
 #include <iostream>
 
-float updateParallax(float offset, float speed, float deltaTime, float resetThreshhold) 
+struct ParallaxLayer
 {
-    
+    sf::Sprite sprite;
+    float offset = 0.0f;
+    float speed = 0.0f;
+    float resetThreshhold = 3072.0f;
 
-    if (offset > -resetThreshhold)
-        offset -= speed * deltaTime;
-    if (offset <= -resetThreshhold)
-        offset = 0.0f;
+    ParallaxLayer(const sf::Texture& texture, float speed, float resetThreshhold = 3072.0f)
+        : sprite(texture), speed(speed), resetThreshhold(resetThreshhold)
+    {}
 
-    return offset;
-}
+    void update(float deltaTime)
+    {
+        if (offset > -resetThreshhold)
+            offset -= speed * deltaTime;
+        if (offset <= -resetThreshhold)
+            offset = 0.0f;
+
+        sprite.setPosition(sf::Vector2(offset, 0.0f));
+    }
+    void draw(sf::RenderWindow& window)
+    {
+        window.draw(sprite);
+    }
+};
 
 int main()
 {
@@ -22,21 +37,28 @@ int main()
 
     sf::View gameView(sf::FloatRect({ 0.0f, 0.0f }, { 1536.0f, 1024.0f }));
 
+    sf::SoundBuffer buffer_jump("jump.wav");
+    sf::Sound sound_jump(buffer_jump);
+
     sf::Texture texture_clouds("clouds.png");
     sf::Sprite sprite_clouds(texture_clouds);
+    ParallaxLayer clouds(texture_clouds, 15.0f);
 
     sf::Texture texture_cloudsTwo("cloudsTwo.png");
     sf::Sprite sprite_cloudsTwo(texture_cloudsTwo);
+    ParallaxLayer cloudsTwo(texture_cloudsTwo, 5.0f);
 
     sf::Texture texture_hills("hills.png");
     sf::Sprite sprite_hills(texture_hills);
-
-    sf::Texture texture_groundBar("groundBar.png");
-    sf::Sprite sprite_groundBar(texture_groundBar);
+    ParallaxLayer hills(texture_hills, 20.0f);
 
     sf::Texture texture_teaRows("teaRows.png");
     sf::Sprite sprite_teaRows(texture_teaRows);
+    ParallaxLayer teaRows(texture_teaRows, 60.0f);
 
+    sf::Texture texture_groundBar("groundBar.png");
+    sf::Sprite sprite_groundBar(texture_groundBar);
+    ParallaxLayer groundBar(texture_groundBar, 100.0f);
 
     sf::Texture texture_robotDefault("robotDefault.png");
     sf::Sprite sprite_robotDefault(texture_robotDefault);
@@ -46,15 +68,7 @@ int main()
 
     sf::Clock clock;
 
-
-    float cloudOffSet{ 0.0f };
-    float cloudTwoOffSet{ 0.0f };
-    float hillOffSet{ 0.0f };
-    float teaRowOffSet{ 0.0f };
-    float groundBarOffSet{ 0.0f };
-
-
-    auto robotPosition{ sf::Vector2f(300.f, 700.f) };
+    auto robotPosition{ sf::Vector2f(300.f, 700.f)};
     auto robotSpeed{ 300.f };
     auto robotVelocity{ 0.f };
 
@@ -94,16 +108,11 @@ int main()
         }
         float deltaTime = clock.restart().asSeconds();
 
-        cloudOffSet = updateParallax(cloudOffSet, 1.0f, deltaTime, 3072.0f);
-
-        cloudTwoOffSet = updateParallax(cloudTwoOffSet, 1.0f, deltaTime, 3072.0f);
-
-        hillOffSet = updateParallax(hillOffSet, 10.0f, deltaTime, 3072.0f);
-
-        teaRowOffSet = updateParallax(teaRowOffSet, 60.0f, deltaTime, 3072.0f);
-
-        groundBarOffSet = updateParallax(groundBarOffSet, 100.0f, deltaTime, 3072.0f);
-
+        clouds.update(deltaTime);
+        cloudsTwo.update(deltaTime);
+        hills.update(deltaTime);
+        teaRows.update(deltaTime);
+        groundBar.update(deltaTime);
 
 
 
@@ -111,27 +120,23 @@ int main()
         robotVelocity = robotSpeed * deltaTime;
 
 
-        sprite_clouds.setPosition(sf::Vector2f(cloudOffSet, 0));
-        sprite_cloudsTwo.setPosition(sf::Vector2f(cloudTwoOffSet, 0));
-        sprite_hills.setPosition(sf::Vector2f(hillOffSet, 0));
-        sprite_teaRows.setPosition(sf::Vector2f(teaRowOffSet, 0));
-        sprite_groundBar.setPosition(sf::Vector2f(groundBarOffSet, 0));
-        sprite_robotDefault.setPosition(sf::Vector2f(robotPosition));
-        sprite_robotJump.setPosition(sf::Vector2f(robotPosition));
 
         window.setView(gameView);
         window.clear();
-        window.draw(sprite_clouds);
-        window.draw(sprite_cloudsTwo);
+        clouds.draw(window);
+        cloudsTwo.draw(window);
+        hills.draw(window);
+        teaRows.draw(window);
+        groundBar.draw(window);
 
-        window.draw(sprite_hills);
-        window.draw(sprite_teaRows);
-        window.draw(sprite_groundBar);
+        sprite_robotDefault.setPosition(robotPosition);
+        sprite_robotJump.setPosition(robotPosition);
         //Jumping check
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::W))
         {
             robotPosition.y -= robotVelocity;
             window.draw(sprite_robotJump);
+            sound_jump.play();
 
         }
         else
