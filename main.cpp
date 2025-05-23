@@ -1,8 +1,7 @@
 #include <SFML/Graphics.hpp>
-#include <SFML/Graphics/View.hpp>
-#include <SFML/Graphics/Rect.hpp>
 #include <SFML/Audio.hpp>
 #include <iostream>
+#include <ctime>
 
 struct ParallaxLayer
 {
@@ -13,7 +12,8 @@ struct ParallaxLayer
 
     ParallaxLayer(const sf::Texture& texture, float speed, float resetThreshhold = 3072.0f)
         : sprite(texture), speed(speed), resetThreshhold(resetThreshhold)
-    {}
+    {
+    }
 
     void update(float deltaTime)
     {
@@ -30,10 +30,52 @@ struct ParallaxLayer
     }
 };
 
+struct PipePair
+{
+    sf::Sprite topPipe;
+    sf::Sprite bottomPipe;
+    float x;     // Current x position
+    float speed; // Horizontal scroll speed
+
+    PipePair(const sf::Texture& topTexture, const sf::Texture& bottomTexture, float startX, float gapY, float speed)
+        : topPipe(topTexture), bottomPipe(bottomTexture), x(startX), speed(speed)
+    {
+        topPipe.setTexture(topTexture);
+        bottomPipe.setTexture(bottomTexture);
+
+        topPipe.setPosition(sf::Vector2f{ x, gapY - 1520.0f });
+        bottomPipe.setPosition(sf::Vector2f{ x, gapY });
+    }
+
+    void update(float deltaTime)
+    {
+        x -= speed * deltaTime;
+
+        topPipe.setPosition(sf::Vector2f{ x, topPipe.getPosition().y });
+        bottomPipe.setPosition(sf::Vector2f{ x, bottomPipe.getPosition().y });
+    }
+
+    void draw(sf::RenderWindow& window)
+    {
+        window.draw(topPipe);
+        window.draw(bottomPipe);
+    }
+};
+
+float pipeRandom()
+{
+return static_cast<float>(rand() % 470 + 420);
+}
+
+
 int main()
 {
-    auto window = sf::RenderWindow(sf::VideoMode({ 1536u, 1024u }), "Flying Robot");
+    auto window = sf::RenderWindow(sf::VideoMode({ 1280u, 720u }), "Flying Robot");
     window.setFramerateLimit(144);
+    window.setPosition({ 300,150 });
+    window.requestFocus();
+    
+    std::srand(static_cast<unsigned>(std::time(nullptr)));
 
     sf::View gameView(sf::FloatRect({ 0.0f, 0.0f }, { 1536.0f, 1024.0f }));
 
@@ -62,15 +104,37 @@ int main()
 
     sf::Texture texture_robotDefault("robotDefault.png");
     sf::Sprite sprite_robotDefault(texture_robotDefault);
+    auto textureSize = texture_robotDefault.getSize();
+    sf::Vector2f robotSize{ static_cast<float>(textureSize.x), static_cast<float>(textureSize.y) };
+
+    sf::Texture texture_pipeB("pipeB.png");
+    sf::Sprite sprite_pipeB(texture_pipeB);
+
+    sf::Texture texture_pipeT("pipeT.png");
+    sf::Sprite sprite_pipeT(texture_pipeT);
+
+    sf::FloatRect robotBounds = sprite_robotDefault.getGlobalBounds();
+    
+
+    std::vector<PipePair> pipes;
+    float pipeSpawnTimer = 0.0f;
+    const float pipeSpacing = 343.0f;
 
     sf::Texture texture_robotJump("robotJump.png");
     sf::Sprite sprite_robotJump(texture_robotJump);
 
     sf::Clock clock;
 
-    auto robotPosition{ sf::Vector2f(300.f, 700.f)};
+    auto robotPosition{ sf::Vector2f(300.f, 700.f) };
     auto robotSpeed{ 300.f };
     auto robotVelocity{ 0.f };
+
+    bool wasJumping = false;
+    const float gravity = 500.0f;
+    const float jumpImpulse = -300.0f;
+    const float groundY = 994.0f;
+    bool wasJumpPressed = false;
+    bool gameOver = false;
 
     while (window.isOpen())
     {
@@ -81,6 +145,11 @@ int main()
             {
                 window.close();
             }
+            else if (const auto* keyPressed = event->getIf<sf::Event::KeyPressed>())
+            {
+                if (keyPressed->scancode == sf::Keyboard::Scancode::Escape)
+                    window.close();
+                            }
             if (event->is<sf::Event::Resized>())
             {
                 sf::FloatRect viewport;
@@ -106,47 +175,107 @@ int main()
                 gameView.setViewport(viewport);
             }
         }
+        
         float deltaTime = clock.restart().asSeconds();
 
+        if (!gameOver)
+        {
         clouds.update(deltaTime);
         cloudsTwo.update(deltaTime);
         hills.update(deltaTime);
         teaRows.update(deltaTime);
-        groundBar.update(deltaTime);
+        // All pipe stuff goes here so it renders behind groundbar
+
+        const float pipeSpeed = 100.0f;
+        pipeSpawnTimer += 0.70*deltaTime;
+        if (pipeSpawnTimer >= pipeSpacing / pipeSpeed)
+        {
+            float gapY = pipeRandom();
+            pipes.emplace_back(texture_pipeT, texture_pipeB, 1536.0f, gapY, pipeSpeed);
+            pipeSpawnTimer = 0.0f;
+            
+        }
+        
 
 
-
+        for (auto& pipe : pipes)
+        {
+            /*
+            if (const std::optional intersection = robotBounds.findIntersection(pipe.topPipe.getGlobalBounds()))
+            {
+                gameOver = true;
+            }
+            if (const std::optional intersection = robotBounds.findIntersection(pipe.bottomPipe.getGlobalBounds()))
+            {
+                gameOver = true;
+            }*/
+            pipe.update(deltaTime);
+        }
         // robot function
-        robotVelocity = robotSpeed * deltaTime;
 
+        //Apply Gravity
+        if (!gameOver)
+        {
+            robotVelocity += gravity * deltaTime;
+        }
+        //Jumping check
+        bool isJumping = sf::Keyboard::isKeyPressed(sf::Keyboard::Key::W);
 
+        if (isJumping && !wasJumpPressed && !gameOver)
+        {
+            robotVelocity = jumpImpulse; // Instant upward push
+            sound_jump.play();
+        }
+        wasJumpPressed = isJumping;
+
+        if (robotPosition.y >= (groundY + 2))
+        {
+            robotPosition.y = (groundY - robotSize.y);
+            robotVelocity = 0.0f;
+            gameOver = true;
+        }
+        //Update Position
+        robotPosition.y += robotVelocity * deltaTime;
+        sprite_robotDefault.setPosition(robotPosition);
+        sprite_robotJump.setPosition(robotPosition);
+        groundBar.update(deltaTime);
+            
+       
+        }
+        
+
+        
 
         window.setView(gameView);
         window.clear();
+
+
+
         clouds.draw(window);
         cloudsTwo.draw(window);
         hills.draw(window);
         teaRows.draw(window);
+        for (auto& pipe : pipes)
+        {
+            pipe.draw(window);
+        }
         groundBar.draw(window);
 
-        sprite_robotDefault.setPosition(robotPosition);
-        sprite_robotJump.setPosition(robotPosition);
-        //Jumping check
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::W))
-        {
-            robotPosition.y -= robotVelocity;
+       
+
+        
+
+        if (robotVelocity < 0)
             window.draw(sprite_robotJump);
-            sound_jump.play();
-
-        }
         else
-        {
-            robotPosition.y += (1.25f * robotVelocity);
             window.draw(sprite_robotDefault);
-        }
 
+       
+            
 
+        
         window.display();
+        
     }
 
 }
