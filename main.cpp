@@ -186,8 +186,8 @@ int main()
         teaRows.update(deltaTime);
         // All pipe stuff goes here so it renders behind groundbar
 
-        const float pipeSpeed = 100.0f;
-        pipeSpawnTimer += 0.70*deltaTime;
+        const float pipeSpeed = 200.0f;
+         pipeSpawnTimer += 0.70*deltaTime;
         if (pipeSpawnTimer >= pipeSpacing / pipeSpeed)
         {
             float gapY = pipeRandom();
@@ -196,20 +196,24 @@ int main()
             
         }
         
-
+        //Update Position
+        robotPosition.y += robotVelocity * deltaTime;
+        sprite_robotDefault.setPosition(robotPosition);
+        sprite_robotJump.setPosition(robotPosition);
+        sf::FloatRect robotBounds = sprite_robotDefault.getGlobalBounds();
 
         for (auto& pipe : pipes)
         {
-            /*
-            if (const std::optional intersection = robotBounds.findIntersection(pipe.topPipe.getGlobalBounds()))
+            if (robotBounds.findIntersection(pipe.topPipe.getGlobalBounds()) ||
+                robotBounds.findIntersection(pipe.bottomPipe.getGlobalBounds()))
             {
+                robotPosition.y = (groundY - robotSize.y);
+                robotVelocity = 0.0f;
                 gameOver = true;
             }
-            if (const std::optional intersection = robotBounds.findIntersection(pipe.bottomPipe.getGlobalBounds()))
-            {
-                gameOver = true;
-            }*/
             pipe.update(deltaTime);
+            
+
         }
         // robot function
 
@@ -234,16 +238,15 @@ int main()
             robotVelocity = 0.0f;
             gameOver = true;
         }
-        //Update Position
-        robotPosition.y += robotVelocity * deltaTime;
-        sprite_robotDefault.setPosition(robotPosition);
-        sprite_robotJump.setPosition(robotPosition);
+        
+
         groundBar.update(deltaTime);
             
        
         }
         
-
+        pipes.erase(std::remove_if(pipes.begin(), pipes.end(),
+            [](const PipePair& pipe) { return pipe.x < -200.0f; }), pipes.end());
         
 
         window.setView(gameView);
