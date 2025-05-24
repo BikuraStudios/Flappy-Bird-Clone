@@ -30,12 +30,15 @@ struct ParallaxLayer
     }
 };
 
+
+
 struct PipePair
 {
     sf::Sprite topPipe;
     sf::Sprite bottomPipe;
     float x;     // Current x position
     float speed; // Horizontal scroll speed
+    bool hasscored = false;
 
     PipePair(const sf::Texture& topTexture, const sf::Texture& bottomTexture, float startX, float gapY, float speed)
         : topPipe(topTexture), bottomPipe(bottomTexture), x(startX), speed(speed)
@@ -67,6 +70,27 @@ float pipeRandom()
 return static_cast<float>(rand() % 470 + 420);
 }
 
+void resetGame(
+    int& score,
+    sf::Text& scoreText,
+    std::vector<PipePair>& pipes,
+    sf::Vector2f& robotPosition,
+    float& robotVelocity,
+    float& pipeSpawnTimer,
+    bool& gameOver,
+    const sf::Vector2f& robotStartPos)
+{
+    score = 0;
+    scoreText.setString("Score: 0");
+
+    pipes.clear();
+    pipeSpawnTimer = 0.0f;
+    robotPosition = robotStartPos;
+    robotVelocity = 0.0f;
+    gameOver = false;
+}
+const sf::Vector2f robotStartPos{ 300.f, 360.f };
+sf::Vector2f robotPosition = robotStartPos;
 
 int main()
 {
@@ -113,6 +137,33 @@ int main()
     sf::Texture texture_pipeT("pipeT.png");
     sf::Sprite sprite_pipeT(texture_pipeT);
 
+    sf::Font font("PressStart2P.ttf");
+    int score = 0;
+    std::string scoreString = std::to_string(score);
+    
+
+    sf::Text scoreText(font);
+    scoreText.setCharacterSize(40);
+    scoreText.setFillColor(sf::Color::White);
+    scoreText.setPosition({ 100.f, 30.f });
+    scoreText.setString("SCORE " + scoreString);
+
+    sf::Text gameOverText(font);
+    gameOverText.setCharacterSize(60);    
+    gameOverText.setFillColor(sf::Color::White);
+    gameOverText.setString("GAME OVER");
+    sf::FloatRect gameOverTextSize = gameOverText.getGlobalBounds();
+    gameOverText.setPosition({ 400.f, 300.f });
+
+    sf::Text resetText(font);
+    resetText.setCharacterSize(30);
+    resetText.setFillColor(sf::Color::White);
+    resetText.setString("PRESS R TO RESET");
+    resetText.setPosition({ 425.f, 400.f });
+
+   
+
+
     sf::FloatRect robotBounds = sprite_robotDefault.getGlobalBounds();
     
 
@@ -125,7 +176,7 @@ int main()
 
     sf::Clock clock;
 
-    auto robotPosition{ sf::Vector2f(300.f, 700.f) };
+    auto robotPosition = robotStartPos;
     auto robotSpeed{ 300.f };
     auto robotVelocity{ 0.f };
 
@@ -135,6 +186,7 @@ int main()
     const float groundY = 994.0f;
     bool wasJumpPressed = false;
     bool gameOver = false;
+    
 
     while (window.isOpen())
     {
@@ -149,7 +201,9 @@ int main()
             {
                 if (keyPressed->scancode == sf::Keyboard::Scancode::Escape)
                     window.close();
-                            }
+                else if (keyPressed->scancode == sf::Keyboard::Scancode::R && gameOver)
+                    resetGame(score, scoreText, pipes, robotPosition, robotVelocity, pipeSpawnTimer, gameOver, robotStartPos);
+            }
             if (event->is<sf::Event::Resized>())
             {
                 sf::FloatRect viewport;
@@ -174,6 +228,8 @@ int main()
 
                 gameView.setViewport(viewport);
             }
+            
+
         }
         
         float deltaTime = clock.restart().asSeconds();
@@ -198,23 +254,52 @@ int main()
         
         //Update Position
         robotPosition.y += robotVelocity * deltaTime;
+
+        //ground collision
+        if (robotPosition.y >= (groundY))
+        {
+            robotPosition.y = (groundY - robotSize.y);
+            robotVelocity = 0.0f;
+            gameOver = true;
+            
+        }
+
         sprite_robotDefault.setPosition(robotPosition);
         sprite_robotJump.setPosition(robotPosition);
         sf::FloatRect robotBounds = sprite_robotDefault.getGlobalBounds();
+
+        
+
+        // Buffer to shrink the collision box
+        const float buffer = 10.0f;
+        robotBounds.position.x += buffer;
+        robotBounds.position.y += buffer;
+        robotBounds.size.x -= 2 * buffer;
+        robotBounds.size.y -= 2 * buffer;
 
         for (auto& pipe : pipes)
         {
             if (robotBounds.findIntersection(pipe.topPipe.getGlobalBounds()) ||
                 robotBounds.findIntersection(pipe.bottomPipe.getGlobalBounds()))
             {
-                robotPosition.y = (groundY - robotSize.y);
-                robotVelocity = 0.0f;
-                gameOver = true;
+               gameOver = true;
             }
             pipe.update(deltaTime);
             
+            sf::FloatRect pipeBounds = pipe.bottomPipe.getGlobalBounds();
 
+            if (!pipe.hasscored && (robotBounds.position.x > pipeBounds.position.x + pipeBounds.size.x))
+            {
+                pipe.hasscored = true;
+                score += 1;
+               std::cout << score << "\n";
+            }
+            
         }
+
+        std::string scoreString = std::to_string(score);
+        scoreText.setString("SCORE " + scoreString);
+
         // robot function
 
         //Apply Gravity
@@ -232,12 +317,7 @@ int main()
         }
         wasJumpPressed = isJumping;
 
-        if (robotPosition.y >= (groundY + 2))
-        {
-            robotPosition.y = (groundY - robotSize.y);
-            robotVelocity = 0.0f;
-            gameOver = true;
-        }
+        
         
 
         groundBar.update(deltaTime);
@@ -265,9 +345,12 @@ int main()
         groundBar.draw(window);
 
        
-
+        if (gameOver)
+        {
+            window.draw(gameOverText);
+            window.draw(resetText);
+        }
         
-
         if (robotVelocity < 0)
             window.draw(sprite_robotJump);
         else
@@ -275,7 +358,7 @@ int main()
 
        
             
-
+        window.draw(scoreText);
         
         window.display();
         
