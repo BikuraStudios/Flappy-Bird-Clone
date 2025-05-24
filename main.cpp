@@ -67,7 +67,7 @@ struct PipePair
 
 float pipeRandom()
 {
-return static_cast<float>(rand() % 470 + 420);
+    return static_cast<float>(rand() % 470 + 420);
 }
 
 void resetGame(
@@ -78,7 +78,9 @@ void resetGame(
     float& robotVelocity,
     float& pipeSpawnTimer,
     bool& gameOver,
-    const sf::Vector2f& robotStartPos)
+    bool& reset,
+    const sf::Vector2f& robotStartPos,
+    sf::Clock& countdownClock)
 {
     score = 0;
     scoreText.setString("Score: 0");
@@ -88,6 +90,10 @@ void resetGame(
     robotPosition = robotStartPos;
     robotVelocity = 0.0f;
     gameOver = false;
+    reset = true;
+
+    countdownClock.restart();
+    
 }
 const sf::Vector2f robotStartPos{ 300.f, 360.f };
 sf::Vector2f robotPosition = robotStartPos;
@@ -98,7 +104,7 @@ int main()
     window.setFramerateLimit(144);
     window.setPosition({ 300,150 });
     window.requestFocus();
-    
+
     std::srand(static_cast<unsigned>(std::time(nullptr)));
 
     sf::View gameView(sf::FloatRect({ 0.0f, 0.0f }, { 1536.0f, 1024.0f }));
@@ -140,7 +146,7 @@ int main()
     sf::Font font("PressStart2P.ttf");
     int score = 0;
     std::string scoreString = std::to_string(score);
-    
+
 
     sf::Text scoreText(font);
     scoreText.setCharacterSize(40);
@@ -149,7 +155,7 @@ int main()
     scoreText.setString("SCORE " + scoreString);
 
     sf::Text gameOverText(font);
-    gameOverText.setCharacterSize(60);    
+    gameOverText.setCharacterSize(60);
     gameOverText.setFillColor(sf::Color::White);
     gameOverText.setString("GAME OVER");
     sf::FloatRect gameOverTextSize = gameOverText.getGlobalBounds();
@@ -161,11 +167,27 @@ int main()
     resetText.setString("PRESS R TO RESET");
     resetText.setPosition({ 425.f, 400.f });
 
-   
+    sf::Text titleText(font);
+    titleText.setCharacterSize(60);
+    titleText.setFillColor(sf::Color::White);
+    titleText.setString("FLYING ROBOT");
+    titleText.setPosition({ 400.f, 200.f });
+
+    sf::Text countdownText(font);
+    countdownText.setCharacterSize(100);
+    countdownText.setFillColor(sf::Color::White);
+    countdownText.setPosition({ 600.f, 400.f });
+
+    sf::Text medalText(font);
+    medalText.setCharacterSize(40);
+    medalText.setFillColor(sf::Color::White);
+    medalText.setPosition({ 400.f, 700.f });
+
+
 
 
     sf::FloatRect robotBounds = sprite_robotDefault.getGlobalBounds();
-    
+
 
     std::vector<PipePair> pipes;
     float pipeSpawnTimer = 0.0f;
@@ -175,6 +197,7 @@ int main()
     sf::Sprite sprite_robotJump(texture_robotJump);
 
     sf::Clock clock;
+    sf::Clock countdownClock;
 
     auto robotPosition = robotStartPos;
     auto robotSpeed{ 300.f };
@@ -186,7 +209,8 @@ int main()
     const float groundY = 994.0f;
     bool wasJumpPressed = false;
     bool gameOver = false;
-    
+    bool reset = true;
+
 
     while (window.isOpen())
     {
@@ -202,7 +226,10 @@ int main()
                 if (keyPressed->scancode == sf::Keyboard::Scancode::Escape)
                     window.close();
                 else if (keyPressed->scancode == sf::Keyboard::Scancode::R && gameOver)
-                    resetGame(score, scoreText, pipes, robotPosition, robotVelocity, pipeSpawnTimer, gameOver, robotStartPos);
+                {
+                    resetGame(score, scoreText, pipes, robotPosition, robotVelocity, pipeSpawnTimer, gameOver, reset, robotStartPos, countdownClock);
+                    
+                }
             }
             if (event->is<sf::Event::Resized>())
             {
@@ -228,106 +255,107 @@ int main()
 
                 gameView.setViewport(viewport);
             }
-            
+
 
         }
         
+
         float deltaTime = clock.restart().asSeconds();
 
         if (!gameOver)
         {
-        clouds.update(deltaTime);
-        cloudsTwo.update(deltaTime);
-        hills.update(deltaTime);
-        teaRows.update(deltaTime);
-        // All pipe stuff goes here so it renders behind groundbar
+            clouds.update(deltaTime);
+            cloudsTwo.update(deltaTime);
+            hills.update(deltaTime);
+            teaRows.update(deltaTime);
+            // All pipe stuff goes here so it renders behind groundbar
 
-        const float pipeSpeed = 200.0f;
-         pipeSpawnTimer += 0.70*deltaTime;
-        if (pipeSpawnTimer >= pipeSpacing / pipeSpeed)
-        {
-            float gapY = pipeRandom();
-            pipes.emplace_back(texture_pipeT, texture_pipeB, 1536.0f, gapY, pipeSpeed);
-            pipeSpawnTimer = 0.0f;
-            
-        }
-        
-        //Update Position
-        robotPosition.y += robotVelocity * deltaTime;
-
-        //ground collision
-        if (robotPosition.y >= (groundY))
-        {
-            robotPosition.y = (groundY - robotSize.y);
-            robotVelocity = 0.0f;
-            gameOver = true;
-            
-        }
-
-        sprite_robotDefault.setPosition(robotPosition);
-        sprite_robotJump.setPosition(robotPosition);
-        sf::FloatRect robotBounds = sprite_robotDefault.getGlobalBounds();
-
-        
-
-        // Buffer to shrink the collision box
-        const float buffer = 10.0f;
-        robotBounds.position.x += buffer;
-        robotBounds.position.y += buffer;
-        robotBounds.size.x -= 2 * buffer;
-        robotBounds.size.y -= 2 * buffer;
-
-        for (auto& pipe : pipes)
-        {
-            if (robotBounds.findIntersection(pipe.topPipe.getGlobalBounds()) ||
-                robotBounds.findIntersection(pipe.bottomPipe.getGlobalBounds()))
+            const float pipeSpeed = 200.0f;
+            pipeSpawnTimer += 0.70 * deltaTime;
+            if (pipeSpawnTimer >= pipeSpacing / pipeSpeed)
             {
-               gameOver = true;
-            }
-            pipe.update(deltaTime);
-            
-            sf::FloatRect pipeBounds = pipe.bottomPipe.getGlobalBounds();
+                float gapY = pipeRandom();
+                pipes.emplace_back(texture_pipeT, texture_pipeB, 1536.0f, gapY, pipeSpeed);
+                pipeSpawnTimer = 0.0f;
 
-            if (!pipe.hasscored && (robotBounds.position.x > pipeBounds.position.x + pipeBounds.size.x))
+            }
+
+            //Update Position
+            robotPosition.y += robotVelocity * deltaTime;
+
+            //ground collision
+            if (robotPosition.y >= (groundY))
             {
-                pipe.hasscored = true;
-                score += 1;
-               std::cout << score << "\n";
+                robotPosition.y = (groundY - robotSize.y);
+                robotVelocity = 0.0f;
+                gameOver = true;
+
             }
+
+            sprite_robotDefault.setPosition(robotPosition);
+            sprite_robotJump.setPosition(robotPosition);
+            sf::FloatRect robotBounds = sprite_robotDefault.getGlobalBounds();
+
             
+
+            // Buffer to shrink the collision box
+            const float buffer = 10.0f;
+            robotBounds.position.x += buffer;
+            robotBounds.position.y += buffer;
+            robotBounds.size.x -= 2 * buffer;
+            robotBounds.size.y -= 2 * buffer;
+
+            for (auto& pipe : pipes)
+            {
+                if (robotBounds.findIntersection(pipe.topPipe.getGlobalBounds()) ||
+                    robotBounds.findIntersection(pipe.bottomPipe.getGlobalBounds()))
+                {
+                    gameOver = true;
+                }
+                pipe.update(deltaTime);
+
+                sf::FloatRect pipeBounds = pipe.bottomPipe.getGlobalBounds();
+
+                if (!pipe.hasscored && (robotBounds.position.x > pipeBounds.position.x + pipeBounds.size.x))
+                {
+                    pipe.hasscored = true;
+                    score += 1;
+                    std::cout << score << "\n";
+                }
+
+            }
+
+            std::string scoreString = std::to_string(score);
+            scoreText.setString("SCORE " + scoreString);
+
+            // robot function
+
+            //Apply Gravity
+            if (!gameOver)
+            {
+                robotVelocity += gravity * deltaTime;
+            }
+            //Jumping check
+            bool isJumping = sf::Keyboard::isKeyPressed(sf::Keyboard::Key::W);
+
+            if (isJumping && !wasJumpPressed && !gameOver)
+            {
+                robotVelocity = jumpImpulse; // Instant upward push
+                sound_jump.play();
+            }
+            wasJumpPressed = isJumping;
+
+
+
+
+            groundBar.update(deltaTime);
+
+
         }
 
-        std::string scoreString = std::to_string(score);
-        scoreText.setString("SCORE " + scoreString);
-
-        // robot function
-
-        //Apply Gravity
-        if (!gameOver)
-        {
-            robotVelocity += gravity * deltaTime;
-        }
-        //Jumping check
-        bool isJumping = sf::Keyboard::isKeyPressed(sf::Keyboard::Key::W);
-
-        if (isJumping && !wasJumpPressed && !gameOver)
-        {
-            robotVelocity = jumpImpulse; // Instant upward push
-            sound_jump.play();
-        }
-        wasJumpPressed = isJumping;
-
-        
-        
-
-        groundBar.update(deltaTime);
-            
-       
-        }
-        
         pipes.erase(std::remove_if(pipes.begin(), pipes.end(),
             [](const PipePair& pipe) { return pipe.x < -200.0f; }), pipes.end());
-        
+
 
         window.setView(gameView);
         window.clear();
@@ -344,24 +372,50 @@ int main()
         }
         groundBar.draw(window);
 
-       
+
         if (gameOver)
         {
             window.draw(gameOverText);
             window.draw(resetText);
+            if (score < 5)
+                medalText.setString("KEEP TRYING!");
+            if (score >= 5 && score < 7)
+                medalText.setString("BRONZE");
+            if (score >= 7 && score < 10)
+                medalText.setString("SILVER");
+            if (score >= 10)
+                medalText.setString("GOLD");
+            window.draw(medalText);
+
         }
-        
+
         if (robotVelocity < 0)
             window.draw(sprite_robotJump);
         else
             window.draw(sprite_robotDefault);
+        
+        if (reset == true)
+        {
+            float timeLeft = 3.0f - countdownClock.getElapsedTime().asSeconds();
+            if (timeLeft <= 0)
+            {
+                reset = false;
+            }
+            else
+            {
 
-       
-            
+                countdownText.setString(std::to_string(static_cast<int>(std::ceil(timeLeft))));
+                window.draw(titleText);
+                window.draw(countdownText);
+                robotVelocity = 0;
+            }
+        }
+
+
         window.draw(scoreText);
-        
+
         window.display();
-        
+
     }
 
 }
