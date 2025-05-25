@@ -112,6 +112,19 @@ int main()
     sf::SoundBuffer buffer_jump("jump.wav");
     sf::Sound sound_jump(buffer_jump);
 
+    sf::SoundBuffer buffer_collision("collision.wav");
+    sf::Sound sound_collision(buffer_collision);
+
+    sf::SoundBuffer buffer_end("end.wav");
+    sf::Sound sound_end(buffer_end);
+
+    sf::SoundBuffer buffer_score("score.wav");
+    sf::Sound sound_score(buffer_score);
+
+    sf::Music BGM("flyingRobotbgm.wav");
+
+
+
     sf::Texture texture_clouds("clouds.png");
     sf::Sprite sprite_clouds(texture_clouds);
     ParallaxLayer clouds(texture_clouds, 15.0f);
@@ -142,6 +155,18 @@ int main()
 
     sf::Texture texture_pipeT("pipeT.png");
     sf::Sprite sprite_pipeT(texture_pipeT);
+
+    sf::Texture texture_bronze("bronze.png");
+    sf::Sprite sprite_bronze(texture_bronze);
+
+    sf::Texture texture_silver("silver.png");
+    sf::Sprite sprite_silver(texture_silver);
+
+    sf::Texture texture_gold("gold.png");
+    sf::Sprite sprite_gold(texture_gold);
+
+    sf::Texture texture_nomedal("nomedal.png");
+    sf::Sprite sprite_nomedal(texture_nomedal);
 
     sf::Font font("PressStart2P.ttf");
     int score = 0;
@@ -210,7 +235,8 @@ int main()
     bool wasJumpPressed = false;
     bool gameOver = false;
     bool reset = true;
-
+    if (!gameOver)
+        BGM.play();
 
     while (window.isOpen())
     {
@@ -228,7 +254,7 @@ int main()
                 else if (keyPressed->scancode == sf::Keyboard::Scancode::R && gameOver)
                 {
                     resetGame(score, scoreText, pipes, robotPosition, robotVelocity, pipeSpawnTimer, gameOver, reset, robotStartPos, countdownClock);
-                    
+                    BGM.play();
                 }
             }
             if (event->is<sf::Event::Resized>())
@@ -258,7 +284,7 @@ int main()
 
 
         }
-        
+
 
         float deltaTime = clock.restart().asSeconds();
 
@@ -289,14 +315,15 @@ int main()
                 robotPosition.y = (groundY - robotSize.y);
                 robotVelocity = 0.0f;
                 gameOver = true;
-
+                sound_collision.play();
+                BGM.stop();
             }
 
             sprite_robotDefault.setPosition(robotPosition);
             sprite_robotJump.setPosition(robotPosition);
             sf::FloatRect robotBounds = sprite_robotDefault.getGlobalBounds();
 
-            
+
 
             // Buffer to shrink the collision box
             const float buffer = 10.0f;
@@ -311,6 +338,8 @@ int main()
                     robotBounds.findIntersection(pipe.bottomPipe.getGlobalBounds()))
                 {
                     gameOver = true;
+                    sound_collision.play();
+                    BGM.stop();
                 }
                 pipe.update(deltaTime);
 
@@ -321,6 +350,7 @@ int main()
                     pipe.hasscored = true;
                     score += 1;
                     std::cout << score << "\n";
+                    sound_score.play();
                 }
 
             }
@@ -375,17 +405,26 @@ int main()
 
         if (gameOver)
         {
+            if (score < 5)
+            {
+                window.draw(sprite_nomedal);
+            }
+            if (score >= 5 && score < 7)
+            {
+                window.draw(sprite_bronze);
+            }
+            if (score >= 7 && score < 10)
+            {
+                window.draw(sprite_silver);
+            }
+            if (score >= 10)
+            {
+                window.draw(sprite_gold);
+            }
+            
             window.draw(gameOverText);
             window.draw(resetText);
-            if (score < 5)
-                medalText.setString("KEEP TRYING!");
-            if (score >= 5 && score < 7)
-                medalText.setString("BRONZE");
-            if (score >= 7 && score < 10)
-                medalText.setString("SILVER");
-            if (score >= 10)
-                medalText.setString("GOLD");
-            window.draw(medalText);
+           
 
         }
 
@@ -393,7 +432,7 @@ int main()
             window.draw(sprite_robotJump);
         else
             window.draw(sprite_robotDefault);
-        
+
         if (reset == true)
         {
             float timeLeft = 3.0f - countdownClock.getElapsedTime().asSeconds();
