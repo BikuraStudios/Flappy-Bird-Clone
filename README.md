@@ -8,3 +8,9 @@ Character Sprite by Lucas Buechler.
 Day 1: Backgrounds created, loaded into sfml, paralax scrolling enabled.
 
 Day 2: Character created, loaded into sfml, given basic gravity and movement. Found Background music, added to folder.
+
+Day 3: Attempted to create Header files, code became completely unlinked and broken, had to revert of earlier github version. Pipes added. Collision roughly added.
+
+Day 4: Collision reworked. Score added. Reset added.
+
+Day 5: Sound added, game finished.
