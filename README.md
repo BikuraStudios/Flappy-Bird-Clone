@@ -14,3 +14,5 @@ Day 3: Attempted to create Header files, code became completely unlinked and bro
 Day 4: Collision reworked. Score added. Reset added.
 
 Day 5: Sound added, game finished.
+
+Todo: write postmortem post.
