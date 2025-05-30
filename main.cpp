@@ -203,10 +203,6 @@ int main()
     countdownText.setFillColor(sf::Color::White);
     countdownText.setPosition({ 600.f, 400.f });
 
-    sf::Text medalText(font);
-    medalText.setCharacterSize(40);
-    medalText.setFillColor(sf::Color::White);
-    medalText.setPosition({ 400.f, 700.f });
 
 
 
